@@ -9,5 +9,5 @@ router = Router()
 
 @router.message(F.text)
 async def chat_handler(message: Message) -> None:
-    response = await generate_response(message.text)
+    response = await generate_response(message.from_user.id, message.text)
     await message.answer(response)

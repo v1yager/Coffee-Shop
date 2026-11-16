@@ -3,6 +3,8 @@ from coffee_shop.bot.config import settings
 
 from pathlib import Path
 
+from coffee_shop.bot.services.redis_service import add_message, get_history
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 COFFEE_INFO = (
@@ -18,18 +20,21 @@ client = AsyncOpenAI(
     base_url=settings.base_url
 )
 
-async def generate_response(message: str) -> str:
+async def generate_response(user_id: int, message: str) -> str:
+    history = await get_history(user_id)
+
     prompt = SYSTEM_PROMPT.format(
         coffee_info=COFFEE_INFO
     )
 
     completion = await client.chat.completions.create(
-        model="qwen/qwen3-4b-2507",
+        model=settings.model_name,
         messages=[
             {
                 "role": "system",
                 "content": prompt
             },
+            *history,
             {
                 "role": "user",
                 "content": message,
@@ -37,5 +42,10 @@ async def generate_response(message: str) -> str:
         ],
     )
 
-    return completion.choices[0].message.content
+    answer = completion.choices[0].message.content or ""
+
+    await add_message(user_id, "user", message)
+    await add_message(user_id, "assistant", answer)
+
+    return answer
 
